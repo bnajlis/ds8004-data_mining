@@ -1,0 +1,161 @@
+---
+title: "DS8004 - Investment Fund Analytics"
+author: "Arabi, Aliasghar - Najlis, Bernardo"
+date: "March 25, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(lubridate)
+library(scales)
+library(dplyr)
+library(wordcloud)
+```
+
+# Exploratory Data Analysis
+
+## DJIA Historical Prices Data
+
+
+```{r}
+djia <- read.csv("Data\ Ingestion/HistoricalPrices.csv", header=TRUE, dec=".", colClasses = c("character", "numeric", "numeric", "numeric", "numeric"))
+
+djia$Date <- as.Date(djia$Date, format= "%m/%d/%y")
+djia$Year <- factor(year(djia$Date))
+djia$Month <- factor(month.abb[month(djia$Date)], levels=month.abb[order(month(djia$Date))])
+djia$Diff <- djia$Close - djia$Open
+djia$Label <- factor(ifelse(djia$Diff > 0,"Up","Down"))
+```
+
+The DJIA dataset contains stock prices for `r nrow(djia)` days (from `r min(djia$Date)` to `r max(djia$Date)`) with values ranging from `r min(djia$Close)` to `r as.character(max(djia$Close))` points. The lowest close price was recorded on `r djia[which(djia$Close == min(djia$Close)),]$Date`, and the highest on `r djia[which(djia$Close == max(djia$Close)),]$Date`.
+
+```{r}
+ggplot(data=djia, aes(x=Date, y=Close)) + 
+  geom_line() + 
+  labs(x="Time", y="Close", title="DJIA Close price over time")
+
+ggplot(data=djia, aes(Year, Close)) + 
+  geom_boxplot() +
+  labs(x="Year", y="Close", title="DJIA Close price spread per year")
+
+ggplot(data=djia, aes(Month, Close)) + 
+  geom_boxplot() +
+  labs(x="Month", y="Close", title="DJIA Close price spread per Month")
+
+djia_updown <- data.frame(UpDown = djia$Label, Year = djia$Year, freq=  1)
+djia_updown1 <- djia_updown %>% group_by(Year, UpDown) %>% summarise(freq = n())
+djia_updown2 <- djia_updown %>% group_by(Year) %>% summarise(total = n())
+djia_updown_pct <- merge(djia_updown1, djia_updown2, by="Year")
+djia_updown_pct$Pct <- djia_updown_pct$freq / djia_updown_pct$total
+
+ggplot(data=djia_updown_pct, aes(Year, Pct)) + 
+  geom_bar(stat="identity", aes(fill=UpDown)) + 
+  labs(x = "Year", y= "Percentage", title="Up/Down days by Year") + 
+  scale_y_continuous(labels=percent)
+
+djia_updown_month <- data.frame(UpDown = djia$Label, Month = djia$Month, freq=  1)
+djia_updown_month1 <- djia_updown_month %>% group_by(Month, UpDown) %>% summarise(freq = n())
+djia_updown_month2 <- djia_updown_month %>% group_by(Month) %>% summarise(total = n())
+djia_updown_month_pct <- merge(djia_updown_month1, djia_updown_month2, by="Month")
+djia_updown_month_pct$Pct <- djia_updown_month_pct$freq / djia_updown_month_pct$total
+
+ggplot(data=djia_updown_month_pct, aes(Month, Pct)) + 
+  geom_bar(stat="identity", aes(fill=UpDown)) + 
+  labs(x = "Month", y= "Percentage", title="Up/Down days by Month") + 
+  scale_y_continuous(labels=percent)
+
+
+ggplot(data=djia, aes(Month)) + 
+  geom_bar(aes(fill=Label, y = (..count.. / sum(..count..)))) +
+    facet_wrap(~Year)
+```
+
+## Reddit World News - Complete Dataset
+
+You can also embed plots, for example:
+
+```{r}
+news0 <- read.csv("Data\ Ingestion/reddit_worldnews/000000_0",
+                 header = FALSE, sep=",", quote="\"", encoding="UTF-8", stringsAsFactors = FALSE,
+                 col.names = c("Date", "Headline", "Score"))
+news1 <- read.csv("Data\ Ingestion/reddit_worldnews/000001_0",
+                 header = FALSE, sep=",", quote="\"", encoding="UTF-8", stringsAsFactors = FALSE,
+                 col.names = c("Date", "Headline", "Score"))
+news2 <- read.csv("Data\ Ingestion/reddit_worldnews/000002_0",
+                 header = FALSE, sep=",", quote="\"", encoding="UTF-8", stringsAsFactors = FALSE,
+                 col.names = c("Date", "Headline", "Score"))
+news3 <- read.csv("Data\ Ingestion/reddit_worldnews/000003_0",
+                 header = FALSE, sep=",", quote="\"", encoding="UTF-8", stringsAsFactors = FALSE,
+                 col.names = c("Date", "Headline", "Score"))
+news4 <- read.csv("Data\ Ingestion/reddit_worldnews/000004_0",
+                 header = FALSE, sep=",", quote="\"", encoding="UTF-8", stringsAsFactors = FALSE,
+                 col.names = c("Date", "Headline", "Score"))
+news5 <- read.csv("Data\ Ingestion/reddit_worldnews/000005_0",
+                 header = FALSE, sep=",", quote="\"", encoding="UTF-8", stringsAsFactors = FALSE,
+                 col.names = c("Date", "Headline", "Score"))
+news6 <- read.csv("Data\ Ingestion/reddit_worldnews/000006_0",
+                 header = FALSE, sep=",", quote="\"", encoding="UTF-8", stringsAsFactors = FALSE,
+                 col.names = c("Date", "Headline", "Score"))
+news7 <- read.csv("Data\ Ingestion/reddit_worldnews/000007_0",
+                 header = FALSE, sep=",", quote="\"", encoding="UTF-8", stringsAsFactors = FALSE,
+                 col.names = c("Date", "Headline", "Score"))
+news8 <- read.csv("Data\ Ingestion/reddit_worldnews/000008_0",
+                 header = FALSE, sep=",", quote="\"", encoding="UTF-8", stringsAsFactors = FALSE,
+                 col.names = c("Date", "Headline", "Score"))
+original.news <- rbind(news0, news1, news2, news3, news4, news5, news6, news7, news8)
+
+rm(news0, news1, news2, news3, news4, news5, news6, news7, news8)
+
+news <- read.csv("Data\ Ingestion/Reddit_Filtered.csv", header=TRUE, sep=",", quote="\"", 
+                 stringsAsFactors = FALSE)
+
+
+news$Date <- as.Date(news$Date, format="%Y-%m-%d")
+news <- news[order(news$Date),]
+news$Year <- factor(year(news$Date))
+
+news$Month <- factor(month.abb[month(news$Date)], levels=month.abb[order(month(news$Date))])
+
+news$Score <- as.numeric(news$Score)
+news$Score.Positive <- as.numeric(news$Score.Positive)
+news$Score.Negative <- as.numeric(news$Score.Negative * -1)
+```
+
+The complete reddit world news dataset has `r nrow(original.news)` headlines. This dataset was limited to a maximum of 25 news per day based on the upvoting score. The headlines range from `r min(news$Date)` to `r max(news$Date)`, with scores (upvotes) varying from `r min(news$Score)` to `r as.character(max(news$Score))`. The highest scored headline on `r news[which(news$Score == max(news$Score)),]$Date` is :"`r news[which(news$Score == max(news$Score)),]$News`", the most recent 0-scored headlines are "`r news[which(news$Score == 0),]$News`".
+
+```{r}
+
+ggplot(data=news, aes(Year, Score)) +
+  geom_boxplot() + 
+  labs(x="Year", y="Upvotes", title="Upvotes spread per year")
+
+ggplot(data=news, aes(Month, Score)) +
+  geom_boxplot() + 
+  labs(x="Month", y="Upvotes", title="Upvotes spread per month")
+
+ggplot(data=news, aes(Year, Score.Positive)) +
+  geom_boxplot() + 
+  labs(x="Year", y="Positive Sentiment Score", title="Positive sentiment scores spread per year")
+
+ggplot(data=news, aes(Month, Score.Positive)) +
+  geom_boxplot() + 
+  labs(x="Month", y="Positive Sentiment Score", title="Positive sentiment scores spread by month")
+
+ggplot(data=news, aes(Year, Score.Negative)) +
+  geom_boxplot() + 
+  labs(x="Year", y="Negative Sentiment Score", title="Negative sentiment scores spread per year")
+
+ggplot(data=news, aes(Month, Score.Negative)) +
+  geom_boxplot() + 
+  labs(x="Month", y="Negative Sentiment Score", title="Negative sentiment scores spread by month")
+
+
+wordcloud(news$News, min.freq=1000)
+
+ggplot2
+
+```
+
+
